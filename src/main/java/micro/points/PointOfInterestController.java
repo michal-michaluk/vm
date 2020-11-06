@@ -1,6 +1,7 @@
 package micro.points;
 
 import lombok.RequiredArgsConstructor;
+import micro.points.PointOfInterestService.PointUpdate;
 import org.springframework.data.domain.Page;
 import org.springframework.data.domain.Pageable;
 import org.springframework.http.MediaType;
@@ -29,7 +30,7 @@ class PointOfInterestController {
             consumes = MediaType.APPLICATION_JSON_VALUE,
             produces = MediaType.APPLICATION_JSON_VALUE)
     public Point patch(@PathVariable UUID id,
-                       @RequestBody @Valid PointOfInterestService.PointUpdate update) {
+                       @RequestBody @Valid PointUpdate update) {
         return service.update(id, update);
     }
 }
