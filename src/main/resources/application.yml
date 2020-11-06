@@ -1,0 +1,27 @@
+spring:
+  application.name: points-of-interest
+  main.banner-mode: off
+
+  kafka.consumer:
+    group-id: points-of-interest
+    auto-offset-reset: earliest
+
+  datasource:
+    driverClassName: org.postgresql.Driver
+    hikari:
+      maximumPoolSize: 15
+
+  jpa:
+    hibernate.ddl-auto: update
+    database-platform: org.hibernate.dialect.PostgreSQL10Dialect
+
+server:
+  shutdown: graceful
+
+management:
+  metrics.export.prometheus.enabled: true
+  endpoint.env.enabled: true
+  endpoints.web.exposure.include: "health,info,env,prometheus"
+  metrics.tags.application: points-of-interest
+
+logging.config: "classpath:log4jconfig/log4j2.xml"
