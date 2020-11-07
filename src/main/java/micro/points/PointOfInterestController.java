@@ -5,8 +5,11 @@ import micro.points.PointOfInterestService.PointUpdate;
 import org.springframework.data.domain.Page;
 import org.springframework.data.domain.Pageable;
 import org.springframework.http.MediaType;
+import org.springframework.retry.annotation.Backoff;
+import org.springframework.retry.annotation.Retryable;
 import org.springframework.web.bind.annotation.*;
 
+import javax.persistence.OptimisticLockException;
 import javax.validation.Valid;
 import java.util.UUID;
 
@@ -26,9 +29,8 @@ class PointOfInterestController {
         return service.findById(id);
     }
 
-    @PatchMapping(value = "/poi/{id}",
-            consumes = MediaType.APPLICATION_JSON_VALUE,
-            produces = MediaType.APPLICATION_JSON_VALUE)
+    @Retryable(value = OptimisticLockException.class, backoff = @Backoff(0))
+    @PatchMapping(value = "/poi/{id}")
     public Point patch(@PathVariable UUID id,
                        @RequestBody @Valid PointUpdate update) {
         return service.update(id, update);

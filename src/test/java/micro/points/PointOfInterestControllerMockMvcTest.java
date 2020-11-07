@@ -3,6 +3,7 @@ package micro.points;
 import com.fasterxml.jackson.core.JsonProcessingException;
 import com.fasterxml.jackson.databind.ObjectMapper;
 import micro.points.location.Location;
+import org.assertj.core.api.Assertions;
 import org.junit.jupiter.api.Test;
 import org.mockito.Mockito;
 import org.mockito.stubbing.OngoingStubbing;
@@ -12,6 +13,7 @@ import org.springframework.boot.test.mock.mockito.MockBean;
 import org.springframework.http.MediaType;
 import org.springframework.test.web.servlet.MockMvc;
 
+import javax.persistence.OptimisticLockException;
 import java.util.UUID;
 
 import static micro.points.PointsFixture.Locations.rooseveltlaanInGent;
@@ -84,6 +86,48 @@ class PointOfInterestControllerMockMvcTest {
                 .andExpect(status().isNotFound());
 
         Mockito.verify(service, Mockito.times(1))
+                .update(givenId, PointOfInterestService.PointUpdate.location(rooseveltlaanInGent()));
+    }
+
+    @Test
+    void patchRetryAfterOptimisticLock() throws Exception {
+        Point givenPoint = PointsFixture.example().setLocation(rooseveltlaanInGent());
+
+        whenUpdating()
+                .thenThrow(new OptimisticLockException())
+                .thenReturn(givenPoint);
+
+        mockMvc.perform(
+                patch("/poi/{id}", givenId)
+                        .contentType(MediaType.APPLICATION_JSON)
+                        .content(jsonOf(rooseveltlaanInGent()))
+                        .accept(MediaType.APPLICATION_JSON))
+                .andExpect(status().isOk());
+
+        Mockito.verify(service, Mockito.times(2))
+                .update(givenId, PointOfInterestService.PointUpdate.location(rooseveltlaanInGent()));
+    }
+
+    @Test
+    void patchRetryMultipleTimeAndRethrow() throws Exception {
+        Point givenPoint = PointsFixture.example().setLocation(rooseveltlaanInGent());
+
+        whenUpdating()
+                .thenThrow(
+                        new OptimisticLockException(),
+                        new OptimisticLockException(),
+                        new OptimisticLockException()
+                ).thenReturn(givenPoint);
+
+        Assertions.assertThatThrownBy(() ->
+                mockMvc.perform(
+                        patch("/poi/{id}", givenId)
+                                .contentType(MediaType.APPLICATION_JSON)
+                                .content(jsonOf(rooseveltlaanInGent()))
+                                .accept(MediaType.APPLICATION_JSON))
+        ).hasCauseInstanceOf(OptimisticLockException.class);
+
+        Mockito.verify(service, Mockito.times(3))
                 .update(givenId, PointOfInterestService.PointUpdate.location(rooseveltlaanInGent()));
     }
 
