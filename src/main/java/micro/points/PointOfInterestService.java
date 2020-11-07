@@ -10,6 +10,8 @@ import org.springframework.data.domain.Page;
 import org.springframework.data.domain.Pageable;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
+import org.springframework.transaction.support.TransactionSynchronizationAdapter;
+import org.springframework.transaction.support.TransactionSynchronizationManager;
 
 import javax.validation.Valid;
 import java.util.Objects;
@@ -30,7 +32,12 @@ public class PointOfInterestService {
         }
         if (update.getLocation() != null && !Objects.equals(point.getLocation(), update.getLocation())) {
             point.setLocation(update.getLocation());
-            client.sendLocationUpdate(id, PointLocation.from(point.getLocation()));
+            TransactionSynchronizationManager.registerSynchronization(new TransactionSynchronizationAdapter() {
+                @Override
+                public void afterCommit() {
+                    client.sendLocationUpdate(id, PointLocation.from(point.getLocation()));
+                }
+            });
         }
         repository.save(point);
         return point;
