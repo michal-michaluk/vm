@@ -14,6 +14,7 @@ import org.springframework.test.web.client.MockRestServiceServer;
 import org.springframework.test.web.client.ResponseActions;
 import org.springframework.test.web.client.ResponseCreator;
 import org.springframework.web.client.HttpServerErrorException;
+import org.springframework.web.client.ResourceAccessException;
 
 import java.net.ConnectException;
 import java.util.UUID;
@@ -60,6 +61,39 @@ class LocationUpdateClientTest {
         assertThatThrownBy(() -> client.sendLocationUpdate(givenId, givenLocation()))
                 .isExactlyInstanceOf(HttpServerErrorException.InternalServerError.class)
                 .hasMessageStartingWith("500 Internal Server Error");
+        server.verify();
+    }
+
+    @Test
+    void retryWithSuccess() {
+        expectRequest()
+                .andExpect(content().json(expectedJson()))
+                .andRespond(withConnectionIssue());
+        expectRequest()
+                .andExpect(content().json(expectedJson()))
+                .andRespond(withSuccess());
+
+        client.sendLocationUpdate(givenId, givenLocation());
+
+        server.verify();
+    }
+
+    @Test
+    void retryWithoutSuccess() {
+        expectRequest()
+                .andExpect(content().json(expectedJson()))
+                .andRespond(withConnectionIssue());
+        expectRequest()
+                .andExpect(content().json(expectedJson()))
+                .andRespond(withConnectionIssue());
+        expectRequest()
+                .andExpect(content().json(expectedJson()))
+                .andRespond(withConnectionIssue());
+
+        assertThatThrownBy(() -> client.sendLocationUpdate(givenId, givenLocation()))
+                .isExactlyInstanceOf(ResourceAccessException.class)
+                .hasCauseInstanceOf(ConnectException.class);
+
         server.verify();
     }
 
