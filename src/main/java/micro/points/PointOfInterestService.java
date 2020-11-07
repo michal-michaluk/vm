@@ -6,12 +6,11 @@ import lombok.Value;
 import micro.points.location.Location;
 import micro.points.location.PointLocation;
 import micro.points.opening.OpeningHours;
+import org.springframework.context.ApplicationEventPublisher;
 import org.springframework.data.domain.Page;
 import org.springframework.data.domain.Pageable;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
-import org.springframework.transaction.support.TransactionSynchronizationAdapter;
-import org.springframework.transaction.support.TransactionSynchronizationManager;
 
 import javax.validation.Valid;
 import java.util.Objects;
@@ -22,7 +21,7 @@ import java.util.UUID;
 public class PointOfInterestService {
 
     private final PointRepository repository;
-    private final LocationUpdateClient client;
+    private final ApplicationEventPublisher events;
 
     @Transactional
     public Point update(UUID id, PointUpdate update) {
@@ -32,12 +31,7 @@ public class PointOfInterestService {
         }
         if (update.getLocation() != null && !Objects.equals(point.getLocation(), update.getLocation())) {
             point.setLocation(update.getLocation());
-            TransactionSynchronizationManager.registerSynchronization(new TransactionSynchronizationAdapter() {
-                @Override
-                public void afterCommit() {
-                    client.sendLocationUpdate(id, PointLocation.from(point.getLocation()));
-                }
-            });
+            events.publishEvent(new LocationUpdated(id, PointLocation.from(point.getLocation())));
         }
         repository.save(point);
         return point;
